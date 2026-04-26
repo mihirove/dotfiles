@@ -1,5 +1,5 @@
 {
-  description = "mihiro-mac dotfiles (nix-darwin + home-manager)";
+  description = "macOS dotfiles (nix-darwin + home-manager)";
 
   inputs = {
     nixpkgs.url = "github:NixOS/nixpkgs/nixos-unstable";
@@ -20,20 +20,20 @@
       forAllSystems = nixpkgs.lib.genAttrs [ "aarch64-darwin" "x86_64-darwin" ];
       mkHost = import ./lib/mkHost.nix;
 
-      hostName = "mihiro-mac";
       system = "aarch64-darwin";
       pkgs = nixpkgs.legacyPackages.${system};
 
-      # Pinned via flake.lock instead of fetched from GitHub on every run,
-      # so `nix run .#switch` does not hit the unauthenticated API rate limit.
-      darwinRebuild =
-        "${self.darwinConfigurations.${hostName}.config.system.build.darwin-rebuild}/bin/darwin-rebuild";
+      hosts = {
+        mac      = { determinate = false; };
+        mac-mini = { determinate = false; };
+      };
     in
     {
-      darwinConfigurations.${hostName} = mkHost {
+      darwinConfigurations = nixpkgs.lib.mapAttrs (hostName: hostCfg: mkHost {
         inherit inputs hostName system;
         username = "mihiro";
-      };
+        determinate = hostCfg.determinate;
+      }) hosts;
 
       formatter = forAllSystems (sys:
         nixpkgs.legacyPackages.${sys}.nixpkgs-fmt);
@@ -44,8 +44,9 @@
           meta.description = "Build the darwin system into ./result without activating";
           program = toString (pkgs.writeShellScript "darwin-build" ''
             set -e
-            echo "Building darwin configuration..."
-            nix build .#darwinConfigurations.${hostName}.system "$@"
+            HOST="''${DARWIN_HOST:-$(scutil --get LocalHostName 2>/dev/null || hostname -s)}"
+            echo "Building darwin configuration for: ''${HOST}"
+            nix build .#darwinConfigurations.''${HOST}.system "$@"
             echo "Build successful. Run 'nix run .#switch' to apply."
           '');
         };
@@ -55,7 +56,11 @@
           meta.description = "Build and activate the darwin system";
           program = toString (pkgs.writeShellScript "darwin-switch" ''
             set -eo pipefail
-            exec sudo ${darwinRebuild} switch --flake .#${hostName} "$@"
+            HOST="''${DARWIN_HOST:-$(scutil --get LocalHostName 2>/dev/null || hostname -s)}"
+            echo "Activating darwin configuration for: ''${HOST}"
+            REBUILD=$(nix build --no-link --print-out-paths \
+              .#darwinConfigurations.''${HOST}.config.system.build.darwin-rebuild)
+            exec sudo "''${REBUILD}/bin/darwin-rebuild" switch --flake .#''${HOST} "$@"
           '');
         };
 
