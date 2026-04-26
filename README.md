@@ -118,7 +118,7 @@ Edit the `casks = [ ... ]` list in `darwin/homebrew.nix`. Removing a line uninst
 `darwin-rebuild` keeps the last few generations:
 
 ```bash
-darwin-rebuild --list-generations
+sudo darwin-rebuild --list-generations
 sudo darwin-rebuild switch --flake .#mihiro-mac~1   # previous generation
 ```
 
