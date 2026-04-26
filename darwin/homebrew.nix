@@ -13,8 +13,10 @@
     };
 
     brews = [
-      # phantom ships with a hard-coded `#!/opt/homebrew/opt/node/bin/node`
-      # shebang, so it can't be moved to nix without upstream changes.
+      # Git worktree manager (phantompane/phantom). The brew bottle ships
+      # with a hard-coded `#!/opt/homebrew/opt/node/bin/node` shebang, so
+      # moving it to nix would require either upstream support for
+      # `#!/usr/bin/env node` or rebuilding it via npm-on-nix.
       "phantom"
     ];
 
