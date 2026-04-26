@@ -25,7 +25,7 @@
 
       hosts = {
         mac      = { determinate = false; };
-        mac-mini = { determinate = true;  };
+        mac-mini = { determinate = false; };
       };
     in
     {

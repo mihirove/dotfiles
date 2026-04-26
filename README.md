@@ -7,21 +7,49 @@
 
 Declarative macOS dotfiles managed with [Nix flakes](https://nixos.wiki/wiki/Flakes), [nix-darwin](https://github.com/LnL7/nix-darwin) and [home-manager](https://github.com/nix-community/home-manager). One `nix run .#switch` rebuilds the system: shell, editor, terminals, fonts, GUI apps, language runtimes, GPG agent, Tailscale, all at once and pinned by `flake.lock`.
 
+## Hosts
+
+`flake.nix` declares one entry per machine. Both run [official Nix](https://nixos.org/download) so that nix-darwin can manage the daemon, GC, and `/etc/nix/nix.conf` consistently. The `determinate = true` opt-in is wired through `lib/mkHost.nix` for future hosts that prefer [Determinate Nix](https://install.determinate.systems/).
+
+| Host | Nix installer | `nix.enable` |
+|---|---|---|
+| `mac` | official | `true` |
+| `mac-mini` | official | `true` |
+
+`nix run .#switch` reads the current `LocalHostName` (`scutil --get LocalHostName`) and applies the matching `darwinConfigurations.<host>`. Override with the `DARWIN_HOST` env var when bootstrapping a fresh machine whose hostname has not been set yet.
+
 ## Quick start (fresh Mac)
 
 ```bash
-# 1. Install Nix (Determinate Systems installer enables flakes by default)
-curl -fsSL https://install.determinate.systems/nix | sh -s -- install
+# 1. Install official Nix (multi-user). Same installer for every host.
+sh <(curl -L https://nixos.org/nix/install) --daemon
 
-# 2. Clone this repo
+# 2. Enable flakes for the bootstrap shell only — the system-level
+#    /etc/nix/nix.conf is set declaratively by darwin/nix.nix on the
+#    very next switch.
+mkdir -p ~/.config/nix
+echo 'experimental-features = nix-command flakes' >> ~/.config/nix/nix.conf
+
+# 3. Clone this repo
 git clone git@github.com:mihirove/dotfiles.git ~/Documents/personal/dotfiles
 cd ~/Documents/personal/dotfiles
 
-# 3. Activate (works for both first-time bootstrap and every subsequent rebuild)
-nix run .#switch
+# 4. Activate. The host's flake entry is picked from the current
+#    LocalHostName; on a fresh machine override it once until the
+#    nix-darwin activation sets the hostname for you.
+DARWIN_HOST=mac-mini nix run .#switch    # first-time bootstrap
+nix run .#switch                         # subsequent rebuilds
 ```
 
-The host configuration is `darwinConfigurations."mihiro-mac"` (Apple Silicon). To target a different machine, edit `hostName` / `system` / `username` at the top of `flake.nix`.
+To add a new host, edit the `hosts` attrset at the top of `flake.nix`:
+
+```nix
+hosts = {
+  mac      = { determinate = false; };
+  mac-mini = { determinate = false; };
+  new-host = { determinate = false; };
+};
+```
 
 ## Daily commands
 
@@ -32,7 +60,7 @@ nix run .#update     # nix flake update
 nix flake check      # type-check all options
 ```
 
-These wrap the underlying `darwin-rebuild` and `nix flake` invocations so the host name (`.#mihiro-mac`) does not have to be retyped.
+These wrap the underlying `darwin-rebuild` and `nix flake` invocations so the host name does not have to be retyped.
 
 ## Repository layout
 
@@ -41,11 +69,11 @@ dotfiles/
 ├── flake.nix              # inputs (nixpkgs, nix-darwin, home-manager) + outputs (darwinConfigurations + apps)
 ├── flake.lock
 ├── lib/
-│   └── mkHost.nix         # darwinSystem factory; passes specialArgs (incl. dotfilesPath)
+│   └── mkHost.nix         # darwinSystem factory; passes specialArgs (incl. dotfilesPath, determinate)
 │
 ├── darwin/                # nix-darwin (system-level, root-managed)
 │   ├── default.nix        # imports the rest, sets hostName + nixpkgs.hostPlatform
-│   ├── nix.nix            # experimental-features, gc, trusted-users
+│   ├── nix.nix            # nix.* settings (no-op when determinate = true)
 │   ├── system.nix         # system.stateVersion, primaryUser, defaults
 │   ├── users.nix          # users.users.<name>, login shell
 │   ├── homebrew.nix       # cask + brew formula declarations
@@ -118,8 +146,8 @@ Edit the `casks = [ ... ]` list in `darwin/homebrew.nix`. Removing a line uninst
 `darwin-rebuild` keeps the last few generations:
 
 ```bash
-sudo darwin-rebuild --list-generations
-sudo darwin-rebuild switch --flake .#mihiro-mac~1   # previous generation
+darwin-rebuild --list-generations
+sudo darwin-rebuild switch --flake .#mac~1   # previous generation on the `mac` host
 ```
 
 ## Secrets
@@ -139,7 +167,8 @@ export GOOGLE_APPLICATION_CREDENTIALS="$HOME/.config/gcloud/legacy_credentials/<
 
 - **macOS App Management permission**: the first activation that touches `~/Applications/Home Manager Apps/` (kitty / Maccy via nix) requires you to grant the active terminal "App Management" in System Settings → Privacy & Security.
 - **Tailscale state**: `services.tailscale.enable` keeps the auth state at `/Library/Tailscale/tailscaled.state`. Migrating from the brew formula adopts that path automatically — no re-login required.
-- **Non-Determinate Nix installers**: official `https://nixos.org/download` does not enable flakes by default. If you used the official installer, prepend `--extra-experimental-features 'nix-command flakes'` to the first `nix run .#switch`, or add `experimental-features = nix-command flakes` to `~/.config/nix/nix.conf`.
+- **Determinate Nix opt-in**: a host can flip to [Determinate Nix](https://install.determinate.systems/) by setting `determinate = true;` in the `hosts` attrset. That makes `darwin/nix.nix` set `nix.enable = false` and skips the `nix.gc` / `nix.settings` / `nix.optimise` options because Determinate manages its own daemon. None of today's hosts use this.
+- **`DARWIN_HOST` override**: on a brand-new machine, `LocalHostName` reflects the macOS default (e.g. `Mihiros-Mac-mini`), not the flake-side host name. Pass `DARWIN_HOST=<flake-host>` for the first activation; the switch sets `LocalHostName` and subsequent runs auto-detect.
 
 ## License
 

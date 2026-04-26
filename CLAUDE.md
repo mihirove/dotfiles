@@ -4,7 +4,9 @@ Guidance for Claude Code (claude.ai/code) working in this repository.
 
 ## Repository overview
 
-Declarative macOS dotfiles. The whole environment — shell, editor, terminals, fonts, GUI apps, language runtimes, GPG agent, Tailscale — is described by a Nix flake and applied with `nix-darwin` + `home-manager`. One `darwin-rebuild switch` is the only command needed to converge to the declared state.
+Declarative macOS dotfiles. The whole environment — shell, editor, terminals, fonts, GUI apps, language runtimes, GPG agent, Tailscale — is described by a Nix flake and applied with `nix-darwin` + `home-manager`. One `nix run .#switch` is the only command needed to converge to the declared state.
+
+`flake.nix` declares one host per machine via the `hosts` attrset. The `nix run .#switch` wrapper picks the matching `darwinConfigurations.<host>` from the current `LocalHostName`; override with `DARWIN_HOST=<host>` when bootstrapping. Hosts can opt into Determinate Nix (which manages its own daemon) by setting `determinate = true;`; that flag flips `darwin/nix.nix` so the conflicting `nix.*` options become no-ops.
 
 ## Build / verify / activate
 
@@ -23,10 +25,10 @@ nix run .#update
 
 # Roll back
 darwin-rebuild --list-generations
-sudo darwin-rebuild switch --flake .#mihiro-mac~1
+sudo darwin-rebuild switch --flake .#mac~1   # or .#mac-mini~1 etc.
 ```
 
-`nix run .#switch` wraps `darwin-rebuild switch --flake .#mihiro-mac` — the rebuild binary it invokes is the one built from this flake's pinned `nix-darwin` input, so no GitHub round-trip per activation.
+`nix run .#switch` wraps `darwin-rebuild switch --flake .#<host>` — `<host>` is read from `scutil --get LocalHostName` (or the `DARWIN_HOST` env var). The rebuild binary it invokes is built from this flake's pinned `nix-darwin` input, so no GitHub round-trip per activation.
 
 ## Architecture
 
@@ -35,7 +37,7 @@ flake.nix                    # inputs: nixpkgs (unstable), nix-darwin, home-mana
 └── lib/mkHost.nix           # darwinSystem factory; passes inputs/hostName/system/username/dotfilesPath as specialArgs
     ├── darwin/              # system-level (root)
     │   ├── default.nix      # imports + networking.hostName + nixpkgs config
-    │   ├── nix.nix          # experimental-features, gc, trusted-users
+    │   ├── nix.nix          # nix.* settings (no-op when host is Determinate)
     │   ├── system.nix       # system.stateVersion, primaryUser
     │   ├── users.nix        # users.users.<name>, login shell
     │   ├── homebrew.nix     # casks + brews + cleanup="uninstall"
@@ -114,4 +116,5 @@ nix run .#switch                # apply
 - **macOS App Management permission**: first activation touching `~/Applications/Home Manager Apps/` requires the active terminal to be granted "App Management" in System Settings → Privacy & Security.
 - **Karabiner**: needs Full Disk Access on `karabiner_grabber` and `karabiner_observer` (System Settings → Privacy & Security).
 - **iTerm2 plist**: `home/programs/iterm2.nix` runs `defaults import` and `killall cfprefsd` so the imported plist actually takes effect; running iTerm2 windows may need to be relaunched.
-- **`phantom` shebang**: the binary's `#!/opt/homebrew/opt/node/bin/node` shebang gets patched in place to `#!/usr/bin/env node` so it can use the nix-managed Node. `brew reinstall phantom` would reset the patch.
+- **Determinate Nix vs `nix.enable`**: hosts marked `determinate = true` in the flake's `hosts` attrset get `nix.enable = false` and the `nix.gc` / `nix.settings` / `nix.optimise` options are inert — Determinate manages the daemon itself.
+- **`DARWIN_HOST` override**: a brand-new machine's `LocalHostName` is the macOS default (e.g. `Mihiros-Mac-mini`). Pass `DARWIN_HOST=<flake-host>` for the first activation; the switch sets `LocalHostName` and subsequent runs auto-detect.
