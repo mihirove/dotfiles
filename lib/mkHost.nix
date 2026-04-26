@@ -1,11 +1,11 @@
-{ inputs, hostName, system, username }:
+{ inputs, hostName, system, username, determinate ? false }:
 
 let
   dotfilesPath = "/Users/${username}/Documents/personal/dotfiles";
 in
 inputs.nix-darwin.lib.darwinSystem {
   inherit system;
-  specialArgs = { inherit inputs hostName username system dotfilesPath; };
+  specialArgs = { inherit inputs hostName username system dotfilesPath determinate; };
   modules = [
     ../darwin
     inputs.home-manager.darwinModules.home-manager
