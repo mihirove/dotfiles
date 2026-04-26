@@ -1,4 +1,4 @@
-# Dotfiles
+# dotfiles
 
 [![macOS](https://img.shields.io/badge/macOS-aarch64-blue.svg)](https://www.apple.com/macos/)
 [![Nix](https://img.shields.io/badge/Nix-flakes-5277C3.svg)](https://nixos.wiki/wiki/Flakes)
