@@ -13,10 +13,9 @@
     };
 
     brews = [
-      # Git worktree manager (phantompane/phantom). The brew bottle ships
-      # with a hard-coded `#!/opt/homebrew/opt/node/bin/node` shebang, so
-      # moving it to nix would require either upstream support for
-      # `#!/usr/bin/env node` or rebuilding it via npm-on-nix.
+      # Git worktree manager (phantompane/phantom). Not in nixpkgs.
+      # brew pulls node in automatically as a dep, so phantom and the
+      # brew bottle's node end up coexisting alongside the nix node.
       "phantom"
     ];
 
