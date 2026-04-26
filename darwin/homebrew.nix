@@ -13,8 +13,9 @@
     };
 
     brews = [
-      # phantom ships with a hard-coded `#!/opt/homebrew/opt/node/bin/node`
-      # shebang, so it can't be moved to nix without upstream changes.
+      # Git worktree manager (phantompane/phantom). Not in nixpkgs.
+      # brew pulls node in automatically as a dep, so phantom and the
+      # brew bottle's node end up coexisting alongside the nix node.
       "phantom"
     ];
 

@@ -90,7 +90,7 @@ The `mkOutOfStoreSymlink` modules point at the repo path (`/Users/<user>/Documen
 | **System fonts** | `darwin/fonts.nix` — `nerd-fonts.monaspace` |
 | **Tailscale** | `darwin/tailscale.nix` — `services.tailscale.enable = true` (CLI + tailscaled launchd daemon) |
 | **Brew casks** | `darwin/homebrew.nix` — `fork`, `orbstack` (apps that need privileged installers) |
-| **Brew formulae** | `darwin/homebrew.nix` — `phantom` only (cmux completion CLI with hard-coded shebang) |
+| **Brew formulae** | `darwin/homebrew.nix` — `phantom` only ([Git worktree manager](https://github.com/phantompane/phantom); not in nixpkgs) |
 | **iTerm2 plist** | `home/programs/iterm2.nix` — `defaults import` + `killall cfprefsd` activation |
 
 `homebrew.onActivation.cleanup = "uninstall"`: anything brew has installed that is not in `brews` / `casks` is removed on the next switch.
@@ -139,7 +139,6 @@ export GOOGLE_APPLICATION_CREDENTIALS="$HOME/.config/gcloud/legacy_credentials/<
 
 - **macOS App Management permission**: the first activation that touches `~/Applications/Home Manager Apps/` (kitty / Maccy via nix) requires you to grant the active terminal "App Management" in System Settings → Privacy & Security.
 - **Tailscale state**: `services.tailscale.enable` keeps the auth state at `/Library/Tailscale/tailscaled.state`. Migrating from the brew formula adopts that path automatically — no re-login required.
-- **`phantom` shebang**: the cmux completion CLI installs with `#!/opt/homebrew/opt/node/bin/node` hard-coded. After moving Node to nix the binary is patched in place to `#!/usr/bin/env node`. Re-running `brew reinstall phantom` would reset that patch.
 - **Non-Determinate Nix installers**: official `https://nixos.org/download` does not enable flakes by default. If you used the official installer, prepend `--extra-experimental-features 'nix-command flakes'` to the first `nix run .#switch`, or add `experimental-features = nix-command flakes` to `~/.config/nix/nix.conf`.
 
 ## License
