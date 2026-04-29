@@ -1,7 +1,7 @@
 """Read Claude responses aloud via a pluggable TTS backend.
 
 The active backend is chosen by the CLAUDE_TTS_BACKEND env var
-(default: piper). To add or swap a backend:
+(default: kokoro). To add or swap a backend:
 
     1. Write `synth_<name>(sentence: str) -> str` returning a wav path.
     2. Register it in the BACKENDS dict below.
@@ -53,7 +53,35 @@ def synth_piper(sentence: str) -> str:
 
 
 KOKORO_URL = os.environ.get("CLAUDE_TTS_KOKORO_URL", "http://127.0.0.1:7321")
-KOKORO_READY_TIMEOUT = float(os.environ.get("CLAUDE_TTS_KOKORO_READY_TIMEOUT", "120"))
+KOKORO_READY_TIMEOUT = float(os.environ.get("CLAUDE_TTS_KOKORO_READY_TIMEOUT", "30"))
+KOKORO_PIDFILE = "/tmp/kokoro-tts.pid"
+
+
+def kokoro_pid_alive() -> bool:
+    try:
+        with open(KOKORO_PIDFILE) as f:
+            pid = int(f.read().strip())
+        os.kill(pid, 0)
+        return True
+    except (OSError, ValueError):
+        return False
+
+
+def kokoro_wait_ready() -> bool:
+    """Block until /health reports ready. Fail fast when no server is running."""
+    if not kokoro_pid_alive():
+        return False
+    deadline = time.time() + KOKORO_READY_TIMEOUT
+    while time.time() < deadline:
+        try:
+            with urllib.request.urlopen(f"{KOKORO_URL}/health", timeout=2) as resp:
+                if json.loads(resp.read()).get("ready"):
+                    return True
+        except urllib.error.URLError:
+            if not kokoro_pid_alive():
+                return False
+        time.sleep(0.5)
+    return False
 
 
 def synth_kokoro(sentence: str) -> str:
@@ -64,21 +92,20 @@ def synth_kokoro(sentence: str) -> str:
         headers={"Content-Type": "application/json"},
         method="POST",
     )
-    deadline = time.time() + KOKORO_READY_TIMEOUT
-    while True:
-        try:
-            with urllib.request.urlopen(req, timeout=120) as resp:
-                return json.loads(resp.read())["wav_path"]
-        except urllib.error.URLError:
-            if time.time() > deadline:
-                raise
-            time.sleep(0.5)
+    with urllib.request.urlopen(req, timeout=120) as resp:
+        return json.loads(resp.read())["wav_path"]
 
 
 BACKENDS = {
     "piper": synth_piper,
     "kokoro": synth_kokoro,
 }
+
+# `piper` shells out to a fresh CLI per sentence (cold-start cost each time),
+# so 4 parallel processes hammer CPU. `kokoro` is a single server with an
+# internal lock — concurrent posts just queue, the parallelism overlaps
+# network/setup with synth.
+BACKEND_WORKERS = {"piper": 1, "kokoro": 4}
 
 # ---------------------------------------------------------------------------
 # Text cleaning
@@ -132,16 +159,59 @@ def clean(text):
 
 
 # ---------------------------------------------------------------------------
+# Transcript reading
+# ---------------------------------------------------------------------------
+
+
+def last_assistant_message(transcript_path: str) -> str:
+    """Read the assistant's most recent textual reply from a JSONL transcript."""
+    last = ""
+    try:
+        with open(transcript_path, "r", encoding="utf-8") as f:
+            for line in f:
+                line = line.strip()
+                if not line:
+                    continue
+                try:
+                    rec = json.loads(line)
+                except json.JSONDecodeError:
+                    continue
+                if rec.get("type") != "assistant":
+                    continue
+                content = rec.get("message", {}).get("content", [])
+                if isinstance(content, str):
+                    text = content
+                elif isinstance(content, list):
+                    text = "".join(
+                        c.get("text", "")
+                        for c in content
+                        if isinstance(c, dict) and c.get("type") == "text"
+                    )
+                else:
+                    text = ""
+                text = text.strip()
+                if text:
+                    last = text
+    except OSError:
+        return ""
+    return last
+
+
+# ---------------------------------------------------------------------------
 # Main
 # ---------------------------------------------------------------------------
 
-backend_name = os.environ.get("CLAUDE_TTS_BACKEND", "piper")
+backend_name = os.environ.get("CLAUDE_TTS_BACKEND", "kokoro")
 synthesize = BACKENDS.get(backend_name)
 if synthesize is None:
     sys.exit(f"unknown CLAUDE_TTS_BACKEND: {backend_name}")
 
 data = json.load(sys.stdin)
-text = data.get("last_assistant_message", "")
+transcript_path = data.get("transcript_path", "")
+if not transcript_path:
+    sys.exit(0)
+
+text = last_assistant_message(transcript_path)
 if not text:
     sys.exit(0)
 
@@ -159,20 +229,35 @@ sentences = [s.strip() for s in re.split(r"(?<=[.!?])\s+", text) if s.strip()]
 if not sentences:
     sys.exit(0)
 
+# Fail fast if kokoro server isn't reachable, instead of blocking on every
+# sentence's POST until the per-call timeout.
+if backend_name == "kokoro" and not kokoro_wait_ready():
+    sys.exit(0)
+
+workers = BACKEND_WORKERS.get(backend_name, 2)
 wav_files = []
+executor = concurrent.futures.ThreadPoolExecutor(max_workers=workers)
+futures = [executor.submit(synthesize, s) for s in sentences]
 try:
-    with concurrent.futures.ThreadPoolExecutor(max_workers=4) as executor:
-        futures = [executor.submit(synthesize, s) for s in sentences]
-        player = None
-        for future in futures:
-            wav_path = future.result()
-            wav_files.append(wav_path)
-            if player:
-                player.wait()
-            player = subprocess.Popen(["afplay", wav_path])
+    player = None
+    for future in futures:
+        wav_path = future.result()
+        wav_files.append(wav_path)
         if player:
             player.wait()
+        player = subprocess.Popen(["afplay", wav_path])
+    if player:
+        player.wait()
 finally:
+    executor.shutdown(wait=True, cancel_futures=True)
+    for fut in futures:
+        if fut.done() and fut.exception() is None:
+            try:
+                p = fut.result()
+                if p and p not in wav_files:
+                    wav_files.append(p)
+            except Exception:
+                pass
     for path in wav_files:
         try:
             os.unlink(path)

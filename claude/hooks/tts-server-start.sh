@@ -16,7 +16,16 @@ case "$BACKEND" in
         UV="$(which uv)"
         DIR="$HOME/.claude/hooks/kokoro-tts"
         PIDFILE="/tmp/kokoro-tts.pid"
+        LOCKDIR="/tmp/kokoro-tts.lock.d"
         LOGFILE="/tmp/kokoro-tts.log"
+        if [ -f "$PIDFILE" ] && kill -0 "$(cat "$PIDFILE")" 2>/dev/null; then
+            exit 0
+        fi
+        # `mkdir` is atomic; concurrent SessionStarts won't both spawn a server.
+        if ! mkdir "$LOCKDIR" 2>/dev/null; then
+            exit 0
+        fi
+        trap 'rmdir "$LOCKDIR" 2>/dev/null || true' EXIT
         if [ -f "$PIDFILE" ] && kill -0 "$(cat "$PIDFILE")" 2>/dev/null; then
             exit 0
         fi
