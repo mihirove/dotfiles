@@ -4,6 +4,7 @@
   home.packages = with pkgs; [
     asciinema
     asciinema-agg
+    envsubst
     fd
     ghq
     gnupg

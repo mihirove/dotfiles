@@ -13,6 +13,12 @@
   home.file.".claude/skills".source =
     config.lib.file.mkOutOfStoreSymlink "${dotfilesPath}/claude/skills";
 
+  home.file.".claude/output-styles".source =
+    config.lib.file.mkOutOfStoreSymlink "${dotfilesPath}/claude/output-styles";
+
+  home.file.".claude/hooks".source =
+    config.lib.file.mkOutOfStoreSymlink "${dotfilesPath}/claude/hooks";
+
   home.file.".claude/statusline-command.sh".source =
     config.lib.file.mkOutOfStoreSymlink "${dotfilesPath}/claude/statusline-command.sh";
 }

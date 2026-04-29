@@ -11,5 +11,20 @@ result
 result-*
 .direnv/
 
-# Secrets (Phase 4+)
+# Python
+__pycache__/
+
+# Secrets
 .secrets.zsh
+
+# Piper TTS uv venv (created on first hook run)
+claude/hooks/piper-tts/.venv/
+
+# Piper voice models (downloaded via piper-tts/download-model.sh)
+claude/hooks/piper-tts/models/
+
+# Kokoro TTS uv venv (created on first hook run)
+claude/hooks/kokoro-tts/.venv/
+
+# Kokoro ONNX model + voices (downloaded via kokoro-tts/download-model.sh)
+claude/hooks/kokoro-tts/models/
