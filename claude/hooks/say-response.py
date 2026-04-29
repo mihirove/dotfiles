@@ -163,8 +163,27 @@ def clean(text):
 # ---------------------------------------------------------------------------
 
 
+def wait_for_transcript_settle(path: str, settle_s: float = 0.15, max_wait_s: float = 2.0) -> None:
+    """The Stop hook can fire before the just-finished turn is flushed to the
+    transcript, which would make us read the previous turn's message. Block
+    until two stat() calls in a row see the same size + mtime."""
+    deadline = time.time() + max_wait_s
+    prev = (-1, -1.0)
+    while time.time() < deadline:
+        try:
+            st = os.stat(path)
+            cur = (st.st_size, st.st_mtime)
+        except OSError:
+            return
+        if cur == prev:
+            return
+        prev = cur
+        time.sleep(settle_s)
+
+
 def last_assistant_message(transcript_path: str) -> str:
     """Read the assistant's most recent textual reply from a JSONL transcript."""
+    wait_for_transcript_settle(transcript_path)
     last = ""
     try:
         with open(transcript_path, "r", encoding="utf-8") as f:
