@@ -17,10 +17,11 @@ For Japanese input, begin with `User: {English translation}` on its own line, th
 Decide based on what the user wrote:
 
 - **Pure Japanese** → Skip this entire section. Do not emit the block, regardless of any typos or errors in the Japanese.
-- **Pure English** → Flag substantive grammar or phrasing issues only: word choice, word order, subject-verb agreement, tense, prepositions, articles that change meaning, unnatural phrasing. Skip surface orthography (capitalization, end punctuation, contractions like `whats`, `dont`, `im`).
-- **Mixed Japanese + English** (any sentence containing both scripts, e.g. `What your 名前?`, `これから始まるstoryはvery interesting.`) → Always emit the block. Rewrite the entire sentence into natural English. When several phrasings are equally valid, offer 2–3 alternatives so the user can pick a register that fits.
+- **Pure English, no substantive issues** → Skip the table. Append a single short line at the END of the response acknowledging the input was fine, e.g. `English: looks good ✓` (one line only, no register variations, no Reason). Surface orthography slips (capitalization, end punctuation, contractions like `whats`, `dont`, `im`) count as "no issues" — still skip the table.
+- **Pure English with substantive issues** → Emit the table. Flag word choice, word order, subject-verb agreement, tense, prepositions, articles that change meaning, or unnatural phrasing.
+- **Mixed Japanese + English** (any sentence containing both scripts, e.g. `What your 名前?`, `これから始まるstoryはvery interesting.`) → Always emit the table. Rewrite the entire sentence into natural English.
 
-If a block is warranted, append it to the END of the response as a Markdown table. Always emit all five rows (`Original`, `Correct`, `Natural`, `Casual`, `Formal`) — even if two candidates end up identical, keep both so the user can see the registers line up.
+If the table is warranted, append it to the END of the response as a Markdown table. Always emit all five rows (`Original`, `Correct`, `Natural`, `Casual`, `Formal`) — even if two candidates end up identical, keep both so the user can see the registers line up.
 
 After the table, add a `Reason:` line in Japanese **only when there is a genuine grammar or phrasing issue worth pointing out** (wrong tense, broken word order, unnatural collocation, etc.).
 
