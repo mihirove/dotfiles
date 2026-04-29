@@ -8,6 +8,8 @@
     "KOKORO_SPEED": "1.0"
   },
   "includeCoAuthoredBy": false,
+  "language": "english",
+  "outputStyle": "default",
   "permissions": {
     "allow": [
       "Read(~/Documents/**/*.js)",
@@ -74,6 +76,17 @@
           {
             "type": "command",
             "command": "[ \"$CLAUDE_VOICE\" = \"1\" ] && ~/.claude/hooks/tts-server-start.sh || true"
+          }
+        ]
+      }
+    ],
+    "UserPromptSubmit": [
+      {
+        "matcher": "",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "~/.claude/hooks/english-coach.sh"
           }
         ]
       }
