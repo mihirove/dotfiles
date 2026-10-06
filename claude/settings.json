@@ -4,12 +4,10 @@
   "env": {
     "CLAUDE_CODE_DISABLE_TERMINAL_TITLE": "1",
     "CLAUDE_TTS_PIPER_MODEL": "/Users/mihiro/.claude/hooks/piper-tts/models/en_US-amy-medium.onnx",
-    "CLAUDE_TTS_BACKEND": "kokoro",
+    "CLAUDE_TTS_BACKEND": "piper",
     "KOKORO_SPEED": "1.0"
   },
   "includeCoAuthoredBy": false,
-  "language": "english",
-  "outputStyle": "default",
   "permissions": {
     "allow": [
       "Read(~/Documents/**/*.js)",
@@ -56,7 +54,6 @@
     "deny": [],
     "ask": []
   },
-  "model": "opus[1m]",
   "hooks": {
     "PostToolUse": [
       {
@@ -124,7 +121,7 @@
     "code-simplifier@claude-plugins-official": true,
     "frontend-design@claude-plugins-official": true,
     "security-guidance@claude-plugins-official": true,
-    "superwhisper@superwhisper": true
+    "superwhisper@superwhisper": false
   },
   "extraKnownMarketplaces": {
     "superwhisper": {
@@ -134,6 +131,8 @@
       }
     }
   },
+  "outputStyle": "default",
+  "language": "english",
   "sandbox": {
     "enabled": true,
     "autoAllowBashIfSandboxed": true,
@@ -151,7 +150,11 @@
       "docker"
     ]
   },
-  "effortLevel": "xhigh",
+  "effortLevel": "high",
+  "tui": "default",
   "skipDangerousModePermissionPrompt": true,
+  "theme": "light",
+  "editorMode": "vim",
+  "agentPushNotifEnabled": true,
   "skipAutoPermissionPrompt": true
 }

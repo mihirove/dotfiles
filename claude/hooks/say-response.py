@@ -163,6 +163,28 @@ def clean(text):
 # ---------------------------------------------------------------------------
 
 
+def other_audio_playing(cpu_threshold: float = 5.0) -> bool:
+    """coreaudiod's CPU spikes only while a stream is being mixed, so high
+    usage means something else is already playing — skip TTS to avoid talking
+    over it."""
+    try:
+        out = subprocess.check_output(["ps", "-axo", "%cpu=,comm="], text=True)
+    except (OSError, subprocess.CalledProcessError):
+        return False
+    for line in out.splitlines():
+        parts = line.strip().split(None, 1)
+        if len(parts) != 2:
+            continue
+        cpu_str, comm = parts
+        if not comm.endswith("coreaudiod"):
+            continue
+        try:
+            return float(cpu_str) > cpu_threshold
+        except ValueError:
+            return False
+    return False
+
+
 def wait_for_transcript_settle(path: str, settle_s: float = 0.15, max_wait_s: float = 2.0) -> None:
     """The Stop hook can fire before the just-finished turn is flushed to the
     transcript, which would make us read the previous turn's message. Block
@@ -246,6 +268,9 @@ if not text:
 
 sentences = [s.strip() for s in re.split(r"(?<=[.!?])\s+", text) if s.strip()]
 if not sentences:
+    sys.exit(0)
+
+if other_audio_playing():
     sys.exit(0)
 
 # Fail fast if kokoro server isn't reachable, instead of blocking on every

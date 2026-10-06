@@ -1,0 +1,16 @@
+{
+  "_comment": "Optional. Merge into ~/.claude/settings.json (user level) for local Claude Code, or into the repo's .claude/settings.json for Claude Code on the web (user-level files are not available there). After a successful `gh pr create`, Claude is told to run the pr-review skill on the new PR. The skill description already makes Claude do this most of the time; the hook makes it deterministic.",
+  "hooks": {
+    "PostToolUse": [
+      {
+        "matcher": "Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python3 -c \"import json,sys; d=json.load(sys.stdin); cmd=d.get('tool_input',{}).get('command',''); out=str(d.get('tool_response',{}).get('stdout','')); import re; m=re.search(r'https://github\\\\.com/[^/\\\\s]+/[^/\\\\s]+/pull/\\\\d+', out); print(json.dumps({'hookSpecificOutput':{'hookEventName':'PostToolUse','additionalContext':f'A pull request was just created: {m.group(0)}. Run the pr-review skill on it now (self-review), then continue.'}})) if ('gh pr create' in cmd and m) else None\""
+          }
+        ]
+      }
+    ]
+  }
+}
