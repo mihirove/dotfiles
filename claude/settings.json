@@ -2,9 +2,14 @@
   "$schema": "https://json.schemastore.org/claude-code-settings.json",
   "cleanupPeriodDays": 9999,
   "env": {
-    "CLAUDE_CODE_DISABLE_TERMINAL_TITLE": "1"
+    "CLAUDE_CODE_DISABLE_TERMINAL_TITLE": "1",
+    "CLAUDE_TTS_PIPER_MODEL": "/Users/mihiro/.claude/hooks/piper-tts/models/en_US-amy-medium.onnx",
+    "CLAUDE_TTS_BACKEND": "kokoro",
+    "KOKORO_SPEED": "1.0"
   },
   "includeCoAuthoredBy": false,
+  "language": "english",
+  "outputStyle": "default",
   "permissions": {
     "allow": [
       "Read(~/Documents/**/*.js)",
@@ -63,6 +68,51 @@
           }
         ]
       }
+    ],
+    "SessionStart": [
+      {
+        "matcher": "",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "[ \"$CLAUDE_VOICE\" = \"1\" ] && ~/.claude/hooks/tts-server-start.sh || true"
+          }
+        ]
+      }
+    ],
+    "UserPromptSubmit": [
+      {
+        "matcher": "",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "~/.claude/hooks/english-coach.sh"
+          }
+        ]
+      }
+    ],
+    "SessionEnd": [
+      {
+        "matcher": "",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "[ \"$CLAUDE_VOICE\" = \"1\" ] && ~/.claude/hooks/tts-server-stop.sh || true"
+          }
+        ]
+      }
+    ],
+    "Stop": [
+      {
+        "matcher": "",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "[ \"$CLAUDE_VOICE\" = \"1\" ] && python3 ~/.claude/hooks/say-response.py || true",
+            "async": true
+          }
+        ]
+      }
     ]
   },
   "statusLine": {
@@ -73,7 +123,16 @@
     "code-review@claude-plugins-official": true,
     "code-simplifier@claude-plugins-official": true,
     "frontend-design@claude-plugins-official": true,
-    "security-guidance@claude-plugins-official": true
+    "security-guidance@claude-plugins-official": true,
+    "superwhisper@superwhisper": true
+  },
+  "extraKnownMarketplaces": {
+    "superwhisper": {
+      "source": {
+        "source": "github",
+        "repo": "superultrainc/superwhisper-claude-code"
+      }
+    }
   },
   "sandbox": {
     "enabled": true,
@@ -93,5 +152,6 @@
     ]
   },
   "effortLevel": "xhigh",
+  "skipDangerousModePermissionPrompt": true,
   "skipAutoPermissionPrompt": true
 }

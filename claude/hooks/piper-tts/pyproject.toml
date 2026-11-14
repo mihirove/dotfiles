@@ -1,0 +1,8 @@
+[project]
+name = "piper-tts-hook"
+version = "0.1.0"
+description = "Piper TTS via the PyPI piper-tts wheel for Claude Code hooks"
+requires-python = ">=3.10"
+dependencies = [
+    "piper-tts",
+]
